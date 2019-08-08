@@ -65,7 +65,7 @@ wipefs "${part_root}"
 wipefs "${part_2}"
 
 mkfs.vfat -F32 "${part_boot}"
-mkfs.btrfs -d single -L "Arch Linux" "${part_root}" "${part_2}"
+mkfs.btrfs -f -d single -L "Arch Linux" "${part_root}" "${part_2}"
 mkdir /mnt/btrfs-root
 mount -o defaults,relatime "${part_root}" /mnt/btrfs-root
 mkdir -p /mnt/btrfs/__snapshot
