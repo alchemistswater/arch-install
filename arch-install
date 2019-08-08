@@ -68,8 +68,8 @@ mkfs.vfat -F32 "${part_boot}"
 mkfs.btrfs -f -d single -L "Arch Linux" "${part_root}" "${part_2}"
 mkdir /mnt/btrfs-root
 mount -o defaults,relatime "${part_root}" /mnt/btrfs-root
-mkdir -p /mnt/btrfs/__snapshot
-mkdir -p /mnt/btrfs/__current
+mkdir -p /mnt/btrfs-root/__snapshot
+mkdir -p /mnt/btrfs-root/__current
 btrfs subvolume create /mnt/btrfs-root/__current/ROOT
 btrfs subvolume create /mnt/btrfs-root/__current/home
 btrfs subvolume create /mnt/btrfs-root/__current/opt
@@ -89,7 +89,7 @@ mount -o defaults,relatime,nodev,nosuid,noexec,subvol=__current/var  "${part_roo
 mkdir -p /mnt/btrfs-current/var/lib
 mount --bind /mnt/btrfs-root/__current/ROOT/var/lib /mnt/btrfs-current/var/lib
 
-pacstrap /mnt/btrfs-current base base-devel btrf-progs grub efibootmgr sudo git curl wget intel-ucode 
+pacstrap /mnt/btrfs-current base base-devel btrfs-progs grub efibootmgr intel-ucode 
 genfstab -U -p /mnt/btrfs-current >> /mnt/btrfs-current/etc/fstab
 cat >>/mnt/btrfs-current/etc/fstab <<EOF
 /run/btrfs-root/__current/ROOT/var/lib		/var/lib	none		bind 
