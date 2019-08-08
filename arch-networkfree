@@ -113,4 +113,4 @@ arch-chroot /mnt/btrfs-current grub-mkconfig -o /boot/grub/grub.cfg
 arch-chroot /mnt/btrfs-current useradd -mU -G wheel "$user"
 
 echo "$user:$password" | chpasswd --root /mnt/btrfs-current
-echo "root:$password" | chpasswd --root /mnt/btrfs/current
+echo "root:$password" | chpasswd --root /mnt/btrfs-current

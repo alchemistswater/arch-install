@@ -91,9 +91,7 @@ mount --bind /mnt/btrfs-root/__current/ROOT/var/lib /mnt/btrfs-current/var/lib
 
 pacstrap /mnt/btrfs-current base base-devel btrfs-progs grub efibootmgr intel-ucode 
 genfstab -U -p /mnt/btrfs-current >> /mnt/btrfs-current/etc/fstab
-cat >>/mnt/btrfs-current/etc/fstab <<EOF
-/run/btrfs-root/__current/ROOT/var/lib		/var/lib	none		bind 
-EOF
+sed 's/var\/lib\///run/btrfs-root btrfs rw,nodev,nosuid,noexec,relatime,ssd,discard,space_cache 0 0 \/run\/btrfs-root\/__current\/ROOT\/var\/lib \/var\/lib none bind' -i /mnt/btrfs-current/etc/fstab
 
 sed 's/fsck/btrfs/' -i /mnt/btrfs-current/etc/mkinitcpio.conf
 sed 's/#en_US.UTF-8/en_US.UTF-8/' -i /mnt/btrfs-current/etc/locale.gen
