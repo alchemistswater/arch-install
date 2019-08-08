@@ -67,7 +67,7 @@ wipefs "${part_2}"
 mkfs.vfat -F32 "${part_boot}"
 mkfs.btrfs -d single -L "Arch Linux" "${part_root}" "${part_2}"
 mkdir /mnt/btrfs-root
-mount -o defaults,relatime"${part_root}" /mnt/btrfs-root
+mount -o defaults,relatime "${part_root}" /mnt/btrfs-root
 mkdir -p /mnt/btrfs/__snapshot
 mkdir -p /mnt/btrfs/__current
 btrfs subvolume create /mnt/btrfs-root/__current/ROOT
@@ -84,7 +84,7 @@ mkdir -p /mnt/btrfs-current/boot
 mount "${part_boot}" /mnt/btrfs-current/boot
 
 mount -o defaults,relatime,nodev,nosuid,subvol=__current/home "${part_root}" /mnt/btrfs-current/home
-mount -o defaults,relatime,nodev,nosuid,subvol=__current/opt"${part_root}"  /mnt/btrfs-current/opt
+mount -o defaults,relatime,nodev,nosuid,subvol=__current/opt "${part_root}"  /mnt/btrfs-current/opt
 mount -o defaults,relatime,nodev,nosuid,noexec,subvol=__current/var  "${part_root}" /mnt/btrfs-current/var
 mkdir -p /mnt/btrfs-current/var/lib
 mount --bind /mnt/btrfs-root/__current/ROOT/var/lib /mnt/btrfs-current/var/lib
