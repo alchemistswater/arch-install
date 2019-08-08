@@ -89,7 +89,7 @@ mount -o defaults,relatime,nodev,nosuid,noexec,subvol=__current/var  "${part_roo
 mkdir -p /mnt/btrfs-current/var/lib
 mount --bind /mnt/btrfs-root/__current/ROOT/var/lib /mnt/btrfs-current/var/lib
 
-pacstrap /mnt/btrfs-current base base-devel btrf-progs grub efibootmgr sudo git curl wget intel-ucode 
+pacstrap /mnt/btrfs-current base base-devel btrfs-progs grub efibootmgr intel-ucode 
 genfstab -U -p /mnt/btrfs-current >> /mnt/btrfs-current/etc/fstab
 cat >>/mnt/btrfs-current/etc/fstab <<EOF
 /run/btrfs-root/__current/ROOT/var/lib		/var/lib	none		bind 
