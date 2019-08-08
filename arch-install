@@ -49,7 +49,7 @@ timedatectl set-ntp true
 parted --script "${device}" -- mklabel gpt \
   mkpart ESP fat32 1Mib 1024MiB \
   set 1 boot on \
-  mkpart primary  100%
+  mkpart primary 1025MiB 100%
 
 parted --script "${device2}" -- mklabel gpt \
   mkpart primary 1Mib 100%
