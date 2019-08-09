@@ -1,0 +1,99 @@
+#!/bin/bash
+# WARNING: this script will destroy data on the selected disk.
+# This script can be run by executing the following:
+#   curl -sL 'to be done'
+set -uo pipefail
+trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
+
+MIRRORLIST_URL="https://www.archlinux.org/mirrorlist/?country=US&protocol=https&use_mirror_status=on"
+
+pacman -Sy --noconfirm pacman-contrib
+
+echo "Updating mirror list"
+curl -s "$MIRRORLIST_URL" | \
+    sed -e 's/^#Server/Server/' -e '/^#/d' | \
+    rankmirrors -n 5 - > /etc/pacman.d/mirrorlist
+
+### Get infomation from user ###
+hostname=$(dialog --stdout --inputbox "Enter hostname" 0 0) || exit 1
+clear
+: ${hostname:?"hostname cannot be empty"}
+
+user=$(dialog --stdout --inputbox "Enter admin username" 0 0) || exit 1
+clear
+: ${user:?"user cannot be empty"}
+
+password=$(dialog --stdout --passwordbox "Enter admin password" 0 0) || exit 1
+clear
+: ${password:?"password cannot be empty"}
+password2=$(dialog --stdout --passwordbox "Enter admin password again" 0 0) || exit 1
+clear
+[[ "$password" == "$password2" ]] || ( echo "Passwords did not match"; exit 1; )
+
+devicelist=$(lsblk -dplnx size -o name,size | grep -Ev "boot|rpmb|loop" | tac)
+device=$(dialog --stdout --menu "Select root disk" 0 0 0 ${devicelist}) || exit 1
+clear
+
+devicelist=$(lsblk -dplnx size -o name,size | grep -Ev "boot|rpmb|loop" | tac)
+device2=$(dialog --stdout --menu "Select home disk" 0 0 0 ${devicelist}) || exit 1
+clear
+
+### Set up logging ###
+exec 1> >(tee "stdout.log")
+exec 2> >(tee "stderr.log")
+
+timedatectl set-ntp true
+
+### Setup the disk and partitions ###
+
+parted --script "${device}" -- mklabel gpt \
+  mkpart ESP fat32 1Mib 1024MiB \
+  set 1 boot on \
+  mkpart primary 1025MiB 100%
+
+parted --script "${device2}" -- mklabel gpt \
+  mkpart primary 1Mib 100%
+
+# Simple globbing was not enough as on one device I needed to match /dev/mmcblk0p1 
+# but not /dev/mmcblk0boot1 while being able to match /dev/sda1 on other devices.
+part_boot="$(ls ${device}* | grep -E "^${device}p?1$")"
+part_root="$(ls ${device}* | grep -E "^${device}p?2$")"
+part_home="$(ls ${device2}* | grep -E "^${device2}p?1$")"
+
+wipefs "${part_boot}"
+wipefs "${part_root}"
+wipefs "${part_home}"
+
+mkfs.vfat -F32 "${part_boot}"
+mkfs.f2fs -l "Arch Linux" "${part_root}" 
+mkfs.xfs "${part_home}"
+mount -o defaults,relatime,discard,ssd "${part_root}" /mnt
+mkdir -p /mnt/boot
+mkdir -p /mnt/home
+mount -o defaults,relatime "${part_boot}" /mnt/boot
+mount -o defaults,relatime "${part_home}" /mnt/home
+
+pacstrap /mnt base base-devel f2fs-tools grub efibootmgr intel-ucode git openssh
+genfstab -U -p /mnt >> /mnt/etc/fstab
+
+sed 's/#en_US.UTF-8/en_US.UTF-8/' -i /mnt/etc/locale.gen
+ln -sf /usr/share/zoneinfo/America/New_York "/mnt/etc/localtime"
+echo "${hostname}" > /mnt/etc/hostname
+echo "LANG=en_US.UTF-8" > /mnt/etc/locale.conf
+
+cat >>/mnt/etc/pacman.conf <<EOF
+[multilib]
+Include = /etc/pacman.d/mirrorlist
+EOF
+arch-chroot /mnt locale-gen
+arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
+
+arch-chroot /mnt useradd -mU -G wheel "$user"
+arch-chroot /mnt mkdir /home/"$user"/builds
+arch-chroot /mnt git clone https://aur.archlinux.org/yay /home/"$user"/builds/yay
+arch-chroot /mnt /home/"$user"/builds/yay/makepkg -si
+arch-chroot /mnt yay -S ckb-next-git steam steam-native-runtime leftwm tint2 compton nextcloud-client pass rofi rofi-pass pass-otp nerd-fonts-complete-mono-glyphs ttf-meslo firefox stow xorg nvidia nvidia-settings nvidia-utils lib32-nvidia-utils xorg-xinit xorg-xrdb
+
+echo "$user:$password" | chpasswd --root /mnt
+echo "root:$password" | chpasswd --root /mnt
