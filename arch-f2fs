@@ -45,6 +45,11 @@ exec 2> >(tee "stderr.log")
 timedatectl set-ntp true
 
 ### Setup the disk and partitions ###
+# Zero the disk, just to make sure.
+
+dd if=/dev/zero of=${device} bs=1M count=50000
+dd if=/dev/zero of=${device2} bs=1M count=50000
+# Create partitions as needed.
 
 parted --script "${device}" -- mklabel gpt \
   mkpart ESP fat32 1Mib 1024MiB \
@@ -56,18 +61,21 @@ parted --script "${device2}" -- mklabel gpt \
 
 # Simple globbing was not enough as on one device I needed to match /dev/mmcblk0p1 
 # but not /dev/mmcblk0boot1 while being able to match /dev/sda1 on other devices.
+
 part_boot="$(ls ${device}* | grep -E "^${device}p?1$")"
 part_root="$(ls ${device}* | grep -E "^${device}p?2$")"
 part_home="$(ls ${device2}* | grep -E "^${device2}p?1$")"
+# Make sure there's no filesystems left
 
-wipefs "${part_boot}"
-wipefs "${part_root}"
-wipefs "${part_home}"
+wipefs -a "${part_boot}"
+wipefs -a "${part_root}"
+wipefs -a "${part_home}"
+# Create new filesystems
 
 mkfs.vfat -F32 "${part_boot}"
-mkfs.f2fs -l "Arch Linux" "${part_root}" 
-mkfs.xfs "${part_home}"
-mount -o defaults,relatime,discard,ssd "${part_root}" /mnt
+mkfs.f2fs -f -l "Arch Linux" "${part_root}" 
+mkfs.xfs -f "${part_home}"
+mount -o defaults,relatime,discard "${part_root}" /mnt
 mkdir -p /mnt/boot
 mkdir -p /mnt/home
 mount -o defaults,relatime "${part_boot}" /mnt/boot
@@ -81,6 +89,8 @@ ln -sf /usr/share/zoneinfo/America/New_York "/mnt/etc/localtime"
 echo "${hostname}" > /mnt/etc/hostname
 echo "LANG=en_US.UTF-8" > /mnt/etc/locale.conf
 
+echo "${user} ALL=(ALL) ALL" >> /mnt/etc/sudoers
+
 cat >>/mnt/etc/pacman.conf <<EOF
 [multilib]
 Include = /etc/pacman.d/mirrorlist
@@ -90,11 +100,12 @@ arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --bootlo
 arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
 
 arch-chroot /mnt useradd -mU -G wheel "$user"
-arch-chroot /mnt pacman -S nvidia nvidia-settings nvidia-utils lib32-nvidia-utils
+arch-chroot /mnt pacman -Sy --noconfirm nvidia nvidia-settings nvidia-utils lib32-nvidia-utils
 arch-chroot /mnt mkdir /home/"$user"/freshinstall
 arch-chroot /mnt git clone https://git.privacytools.io/silentfoof/arch-install /home/"$user"/freshinstall
 arch-chroot /mnt chown -R "$user:$user" /home/"$user"/
 cp /mnt/home/"$user"/freshinstall/profile /mnt/etc/profile.d/firstrun.sh
+arch-chroot /mnt systemctl enable dhcpcd
 
 echo "$user:$password" | chpasswd --root /mnt
 echo "root:$password" | chpasswd --root /mnt
