@@ -1,8 +1,12 @@
 #!/bin/bash
-sleep 5
-git clone https://git.privacytools.io/silentfoof/quickrice ~/quickrice
-chmod +x ~/quickrise/setup.sh
-cd ~/quickrice/
-sh setup.sh
-cd ~
-sudo rm -rf /etc/profile.d/firstrun.sh
+if [ ! -e "/home/$USER/quickrice" ] 
+ then
+    sleep 5
+    git clone https://git.privacytools.io/silentfoof/quickrice ~/quickrice
+    chmod +x ~/quickrice/setup.sh
+    cd ~/quickrice/
+    sh setup.sh
+    cd ~
+else
+    echo "we good"
+fi
