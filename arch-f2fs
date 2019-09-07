@@ -102,9 +102,8 @@ arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
 arch-chroot /mnt useradd -mU -G wheel "$user"
 arch-chroot /mnt pacman -Sy --noconfirm nvidia nvidia-settings nvidia-utils lib32-nvidia-utils
 arch-chroot /mnt mkdir /home/"$user"/freshinstall
-arch-chroot /mnt git clone https://git.privacytools.io/silentfoof/arch-install /home/"$user"/freshinstall
+curl -sL https://git.privacytools.io/silentfoof/arch-install/raw/branch/master/profile > /mnt/etc/profile.d/firstrun.sh
 arch-chroot /mnt chown -R "$user:$user" /home/"$user"/
-cp /mnt/home/"$user"/freshinstall/profile /mnt/etc/profile.d/firstrun.sh
 arch-chroot /mnt systemctl enable dhcpcd
 
 echo "$user:$password" | chpasswd --root /mnt
