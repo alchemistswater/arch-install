@@ -46,9 +46,9 @@ timedatectl set-ntp true
 
 ### Setup the disk and partitions ###
 # Zero the disk, just to make sure.
+shred --verbose --random-source=/dev/urandom -n1 ${device}
+shred --verbose --random-source=/dev/urandom -n1 ${device2}
 
-dd if=/dev/zero of=${device} bs=1M count=50000
-dd if=/dev/zero of=${device2} bs=1M count=50000
 # Create partitions as needed.
 
 parted --script "${device}" -- mklabel gpt \
@@ -65,11 +65,13 @@ parted --script "${device2}" -- mklabel gpt \
 part_boot="$(ls ${device}* | grep -E "^${device}p?1$")"
 part_root="$(ls ${device}* | grep -E "^${device}p?2$")"
 part_home="$(ls ${device2}* | grep -E "^${device2}p?1$")"
+
 # Make sure there's no filesystems left
 
-wipefs -a "${part_boot}"
-wipefs -a "${part_root}"
-wipefs -a "${part_home}"
+wipefs -af "${part_boot}"
+wipefs -af "${part_root}"
+wipefs -af "${part_home}"
+
 # Create new filesystems
 
 mkfs.vfat -F32 "${part_boot}"
@@ -99,7 +101,6 @@ arch-chroot /mnt locale-gen
 arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
 arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
 
-arch-chroot /mnt useradd -mU -G wheel "$user"
 arch-chroot /mnt pacman -Sy --noconfirm nvidia nvidia-settings nvidia-utils lib32-nvidia-utils
 arch-chroot /mnt mkdir /home/"$user"/freshinstall
 curl -sL https://git.privacytools.io/silentfoof/arch-install/raw/branch/master/profile > /mnt/etc/profile.d/firstrun.sh
