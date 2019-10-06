@@ -46,8 +46,8 @@ timedatectl set-ntp true
 
 ### Setup the disk and partitions ###
 # Zero the disk, just to make sure.
-shred --verbose --random-source=/dev/urandom -n1 ${device}
-shred --verbose --random-source=/dev/urandom -n1 ${device2}
+#shred --verbose --random-source=/dev/urandom -n1 ${device}
+#shred --verbose --random-source=/dev/urandom -n1 ${device2}
 
 # Create partitions as needed.
 
@@ -83,7 +83,7 @@ mkdir -p /mnt/home
 mount -o defaults,relatime "${part_boot}" /mnt/boot
 mount -o defaults,relatime "${part_home}" /mnt/home
 
-pacstrap /mnt base base-devel f2fs-tools grub efibootmgr intel-ucode git openssh
+pacstrap /mnt base base-devel zsh curl wget linux e2fsprogs xfsprogs f2fs-tools grub efibootmgr intel-ucode git openssh
 genfstab -U -p /mnt >> /mnt/etc/fstab
 
 sed 's/#en_US.UTF-8/en_US.UTF-8/' -i /mnt/etc/locale.gen
@@ -100,9 +100,8 @@ EOF
 arch-chroot /mnt locale-gen
 arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
 arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
-
-arch-chroot /mnt pacman -Sy --noconfirm nvidia nvidia-settings nvidia-utils lib32-nvidia-utils
-arch-chroot /mnt mkdir /home/"$user"/freshinstall
+arch-chroot /mnt useradd -mU -s /usr/bin/zsh -G wheel "$user"
+arch-chroot /mnt pacman -Sy --noconfirm nvidia nvidia-settings nvidia-utils lib32-nvidia-utils dhcpcd
 curl -sL https://git.privacytools.io/silentfoof/arch-install/raw/branch/master/profile > /mnt/etc/profile.d/firstrun.sh
 arch-chroot /mnt chown -R "$user:$user" /home/"$user"/
 arch-chroot /mnt systemctl enable dhcpcd
