@@ -99,7 +99,7 @@ Include = /etc/pacman.d/mirrorlist
 EOF
 arch-chroot /mnt locale-gen
 arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
-sed 's/loglevel=3 quiet/loglevel=3 quiet mitigations=off nowatchdog' -i /mnt/etc/default/grub
+sed 's/loglevel\=3\ quiet/loglevel\=3\ quiet\ mitigations\=off\ nowatchdog' -i /mnt/etc/default/grub
 arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
 arch-chroot /mnt useradd -mU -G wheel "$user"
 arch-chroot /mnt pacman -Sy --noconfirm nvidia nvidia-settings nvidia-utils lib32-nvidia-utils dhcpcd
