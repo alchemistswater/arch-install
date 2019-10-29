@@ -102,10 +102,11 @@ arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --bootlo
 sed 's/loglevel=3\ quiet/loglevel=3\ quiet\ mitigations=off\ nowatchdog/' -i /mnt/etc/default/grub
 arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
 arch-chroot /mnt useradd -mU -G wheel "$user"
-arch-chroot /mnt pacman -Sy --noconfirm nvidia nvidia-settings nvidia-utils lib32-nvidia-utils dhcpcd
+arch-chroot /mnt pacman -Sy --noconfirm nvidia nvidia-settings nvidia-utils lib32-nvidia-utils dhcpcd dash
 curl -sL https://git.privacytools.io/silentfoof/arch-install/raw/branch/master/profile > /mnt/etc/profile.d/firstrun.sh
 arch-chroot /mnt chown -R "$user:$user" /home/"$user"/
 arch-chroot /mnt systemctl enable dhcpcd
+arch-chroot /mnt ln -sfT dash /usr/bin/sh
 
 echo "$user:$password" | chpasswd --root /mnt
 echo "root:$password" | chpasswd --root /mnt
