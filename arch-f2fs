@@ -140,5 +140,9 @@ arch-chroot /mnt chown -R "$user:$user" /home/"$user"/
 arch-chroot /mnt systemctl enable dhcpcd
 arch-chroot /mnt ln -sfT dash /usr/bin/sh
 
-echo "$user:$password" | chpasswd --root /mnt
-echo "root:$password" | chpasswd --root /mnt
+echo "$password
+$password
+" | arch-chroot /mnt passwd $user
+
+echo "$password
+$password" | arch-chroot /mnt passwd
