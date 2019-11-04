@@ -118,12 +118,22 @@ arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
 arch-chroot /mnt useradd -mU -G wheel "$user"
 arch-chroot /mnt pacman -Sy --noconfirm dhcpcd dash
 
-read -p "-- Install nvidia including 32bit support? [y/N] " yna
-case $yna in
-    [Yy]* ) pacman -Sy --noconfirm nvidia nvidia-settings nvidia-utils lib32-nvidia-utils
-    ;;
-    * ) echo "-- Skipping";;
-esac
+#read -p "-- Install nvidia including 32bit support? [y/N] " yna
+#case $yna in
+#    [Yy]* ) arch-chroot /mnt pacman -Sy --noconfirm nvidia nvidia-settings nvidia-utils lib32-nvidia-utils
+#    ;;
+#    * ) echo "-- Skipping";;
+#esac
+
+nvidia=$(dialog --stdout --inputbox "install nvidia including 32bit support? [y/N]" 0 0) || exit 1
+clear
+shopt -s nocasematch
+if [[ $nvidia =~ y ]]
+then
+	arch-chroot /mnt pacman -Sy --noconfirm nvidia nvidia-settings nvidia-utils lib32-nvidia-utils
+else
+	echo "-- skipping"
+fi
 
 curl -sL https://git.privacytools.io/silentfoof/arch-install/raw/branch/master/profile > /mnt/etc/profile.d/firstrun.sh
 arch-chroot /mnt chown -R "$user:$user" /home/"$user"/
