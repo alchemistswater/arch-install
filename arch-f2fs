@@ -14,6 +14,8 @@ curl -s "$MIRRORLIST_URL" | \
     sed -e 's/^#Server/Server/' -e '/^#/d' | \
     rankmirrors -n 5 - > /etc/pacman.d/mirrorlist
 
+swap_size=$(free --mebi | awk '/Mem:/ {print $2}')
+
 ### Get infomation from user ###
 hostname=$(dialog --stdout --inputbox "Enter hostname" 0 0) || exit 1
 clear
@@ -118,13 +120,6 @@ arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
 arch-chroot /mnt useradd -mU -G wheel "$user"
 arch-chroot /mnt pacman -Sy --noconfirm dhcpcd dash
 
-#read -p "-- Install nvidia including 32bit support? [y/N] " yna
-#case $yna in
-#    [Yy]* ) arch-chroot /mnt pacman -Sy --noconfirm nvidia nvidia-settings nvidia-utils lib32-nvidia-utils
-#    ;;
-#    * ) echo "-- Skipping";;
-#esac
-
 nvidia=$(dialog --stdout --inputbox "install nvidia including 32bit support? [y/N]" 0 0) || exit 1
 clear
 shopt -s nocasematch
@@ -139,6 +134,12 @@ curl -sL https://git.privacytools.io/silentfoof/arch-install/raw/branch/master/p
 arch-chroot /mnt chown -R "$user:$user" /home/"$user"/
 arch-chroot /mnt systemctl enable dhcpcd
 arch-chroot /mnt ln -sfT dash /usr/bin/sh
+
+echo 'creating swapfile'
+arch-chroot /mnt dd if=/dev/zero of=/swapfile count=$swap_size bs=1MiB status=progress
+arch-chroot /mnt chmod 600 /swapfile
+arch-chroot /mnt mkswap /swapfile
+echo '/swapfile none swap sw 0 0' | tee -a /mnt/etc/fstab
 
 echo "$password
 $password
