@@ -99,7 +99,7 @@ mount -o defaults,relatime "${part_home}" /mnt/home
 mount -o defaults,relatime "${part_var}" /mnt/var
 mount -o defaults,relatime "${part_tmp}" /mnt/tmp
 
-pacstrap /mnt base base-devel curl wget linux e2fsprogs xfsprogs f2fs-tools grub efibootmgr intel-ucode git openssh
+pacstrap /mnt base base-devel curl wget linux e2fsprogs xfsprogs f2fs-tools grub efibootmgr intel-ucode git openssh dash
 genfstab -U -p /mnt >> /mnt/etc/fstab
 
 sed 's/#en_US.UTF-8/en_US.UTF-8/' -i /mnt/etc/locale.gen
@@ -125,7 +125,7 @@ clear
 shopt -s nocasematch
 if [[ $nvidia =~ y ]]
 then
-	arch-chroot /mnt pacman -Sy --noconfirm nvidia nvidia-settings nvidia-utils lib32-nvidia-utils
+	arch-chroot /mnt pacman -Sy --noconfirm nvidia nvidia-settings nvidia-utils lib32-nvidia-utils vulkan-icd-loader lib32-vulkan-icd-loader
 else
 	echo "-- skipping"
 fi
@@ -147,3 +147,7 @@ $password
 
 echo "$password
 $password" | arch-chroot /mnt passwd
+
+umount -R /mnt
+
+echo 'reboot when ready!'
