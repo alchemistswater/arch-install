@@ -59,9 +59,9 @@ parted --script "${device}" -- mklabel gpt \
   mkpart primary 1024MiB 100%
 
 parted --script "${device2}" -- mklabel gpt \
-  mkpart primary 1Mib 3814MiB \
-  mkpart primary 3814MiB 9537MiB \
-  mkpart primary 9537MiB 100%
+#  mkpart primary 1Mib 3814MiB \
+#  mkpart primary 3814MiB 9537MiB \
+  mkpart primary 1MiB 100%
 
 # Simple globbing was not enough as on one device I needed to match /dev/mmcblk0p1 
 # but not /dev/mmcblk0boot1 while being able to match /dev/sda1 on other devices.
@@ -69,35 +69,35 @@ parted --script "${device2}" -- mklabel gpt \
 part_boot="$(ls ${device}* | grep -E "^${device}p?1$")"
 part_root="$(ls ${device}* | grep -E "^${device}p?2$")"
 part_home="$(ls ${device2}* | grep -E "^${device2}p?3$")"
-part_tmp="$(ls ${device2}* | grep -E "^${device2}p?2$")"
-part_var="$(ls ${device2}* | grep -E "^${device2}p?1$")"
+#part_tmp="$(ls ${device2}* | grep -E "^${device2}p?2$")"
+#part_var="$(ls ${device2}* | grep -E "^${device2}p?1$")"
 
 # Make sure there's no filesystems left
 
 wipefs -af "${part_boot}"
 wipefs -af "${part_root}"
 wipefs -af "${part_home}"
-wipefs -af "${part_tmp}"
-wipefs -af "${part_var}"
+#wipefs -af "${part_tmp}"
+#wipefs -af "${part_var}"
 
 # Create new filesystems
 
 mkfs.vfat -F32 "${part_boot}"
 mkfs.f2fs -f -l "Arch Linux" "${part_root}" 
 mkfs.xfs -f "${part_home}"
-mkfs.xfs -f "${part_var}"
-mkfs.xfs -f "${part_tmp}"
+#mkfs.xfs -f "${part_var}"
+#mkfs.xfs -f "${part_tmp}"
 
 mount -o defaults,relatime,discard "${part_root}" /mnt
 mkdir -p /mnt/boot
 mkdir -p /mnt/home
-mkdir -p /mnt/tmp
-mkdir -p /mnt/var
+#mkdir -p /mnt/tmp
+#mkdir -p /mnt/var
 
 mount -o defaults,relatime "${part_boot}" /mnt/boot
 mount -o defaults,relatime "${part_home}" /mnt/home
-mount -o defaults,relatime "${part_var}" /mnt/var
-mount -o defaults,relatime "${part_tmp}" /mnt/tmp
+#mount -o defaults,relatime "${part_var}" /mnt/var
+#mount -o defaults,relatime "${part_tmp}" /mnt/tmp
 
 pacstrap /mnt base base-devel curl wget linux e2fsprogs xfsprogs f2fs-tools grub efibootmgr intel-ucode git openssh dash
 genfstab -U -p /mnt >> /mnt/etc/fstab
@@ -115,7 +115,7 @@ Include = /etc/pacman.d/mirrorlist
 EOF
 arch-chroot /mnt locale-gen
 arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
-sed 's/loglevel=3\ quiet/loglevel=3\ quiet\ mitigations=off\ nowatchdog/' -i /mnt/etc/default/grub
+sed 's/loglevel=3\ quiet/loglevel=3\ quiet\ nowatchdog/' -i /mnt/etc/default/grub
 arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
 arch-chroot /mnt useradd -mU -G wheel "$user"
 arch-chroot /mnt pacman -Sy --noconfirm dhcpcd dash
