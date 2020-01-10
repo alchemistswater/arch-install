@@ -1,0 +1,168 @@
+#!/bin/bash
+# WARNING: this script will destroy data on the selected disk.
+# This script can be run by executing the following:
+#   curl -sL https://git.io/JedyS | bash
+set -uo pipefail
+trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
+
+MIRRORLIST_URL="https://www.archlinux.org/mirrorlist/?country=US&protocol=https&use_mirror_status=on"
+
+pacman -Sy --noconfirm pacman-contrib
+
+echo "Updating mirror list"
+curl -s "$MIRRORLIST_URL" | \
+    sed -e 's/^#Server/Server/' -e '/^#/d' | \
+    rankmirrors -n 5 - > /etc/pacman.d/mirrorlist
+
+swap_size=$(free --mebi | awk '/Mem:/ {print $2}')
+
+### Get infomation from user ###
+hostname=$(dialog --stdout --inputbox "Enter hostname" 0 0) || exit 1
+clear
+: ${hostname:?"hostname cannot be empty"}
+
+user=$(dialog --stdout --inputbox "Enter admin username" 0 0) || exit 1
+clear
+: ${user:?"user cannot be empty"}
+
+password=$(dialog --stdout --passwordbox "Enter admin password" 0 0) || exit 1
+clear
+: ${password:?"password cannot be empty"}
+password2=$(dialog --stdout --passwordbox "Enter admin password again" 0 0) || exit 1
+clear
+[[ "$password" == "$password2" ]] || ( echo "Passwords did not match"; exit 1; )
+
+devicelist=$(lsblk -dplnx size -o name,size | grep -Ev "boot|rpmb|loop" | tac)
+device=$(dialog --stdout --menu "Select root disk" 0 0 0 ${devicelist}) || exit 1
+clear
+
+#devicelist=$(lsblk -dplnx size -o name,size | grep -Ev "boot|rpmb|loop" | tac)
+#device2=$(dialog --stdout --menu "Select home disk" 0 0 0 ${devicelist}) || exit 1
+#clear
+
+### Set up logging ###
+exec 1> >(tee "stdout.log")
+exec 2> >(tee "stderr.log")
+
+timedatectl set-ntp true
+
+### Setup the disk and partitions ###
+# Zero the disk, just to make sure.
+#shred --verbose --random-source=/dev/urandom -n1 ${device}
+#shred --verbose --random-source=/dev/urandom -n1 ${device2}
+
+# Create partitions as needed.
+
+parted --script "${device}" -- mklabel gpt \
+  mkpart ESP fat32 1Mib 1024MiB \
+  set 1 boot on \
+  mkpart primary 1024MiB 100%
+  
+#parted --script "${device2}" -- mklabel gpt \
+#  mkpart primary 1Mib 3814MiB \
+#  mkpart primary 3814MiB 9537MiB \
+#  mkpart primary 1MiB 100%
+
+# Simple globbing was not enough as on one device I needed to match /dev/mmcblk0p1 
+# but not /dev/mmcblk0boot1 while being able to match /dev/sda1 on other devices.
+
+part_boot="$(ls ${device}* | grep -E "^${device}p?1$")"
+part_root="$(ls ${device}* | grep -E "^${device}p?2$")"
+#part_home="$(ls ${device2}* | grep -E "^${device2}p?3$")"
+#part_tmp="$(ls ${device2}* | grep -E "^${device2}p?2$")"
+#part_var="$(ls ${device2}* | grep -E "^${device2}p?1$")"
+
+# Make sure there's no filesystems left
+
+wipefs -af "${part_boot}"
+wipefs -af "${part_root}"
+#wipefs -af "${part_home}"
+#wipefs -af "${part_tmp}"
+#wipefs -af "${part_var}"
+
+# Create new filesystems
+
+mkfs.vfat -F32 "${part_boot}"
+mkfs.f2fs -f -l "Arch Linux" "${part_root}" 
+#mkfs.xfs -f "${part_home}"
+#mkfs.xfs -f "${part_var}"
+#mkfs.xfs -f "${part_tmp}"
+
+mount -o defaults,relatime,discard "${part_root}" /mnt
+mkdir -p /mnt/boot
+#mkdir -p /mnt/home
+#mkdir -p /mnt/tmp
+#mkdir -p /mnt/var
+
+mount -o defaults,relatime "${part_boot}" /mnt/boot
+#mount -o defaults,relatime "${part_home}" /mnt/home
+#mount -o defaults,relatime "${part_var}" /mnt/var
+#mount -o defaults,relatime "${part_tmp}" /mnt/tmp
+
+pacstrap /mnt base base-devel curl wget linux e2fsprogs f2fs-tools grub efibootmgr intel-ucode git openssh dash
+genfstab -U -p /mnt >> /mnt/etc/fstab
+
+sed 's/#en_US.UTF-8/en_US.UTF-8/' -i /mnt/etc/locale.gen
+ln -sf /usr/share/zoneinfo/America/New_York "/mnt/etc/localtime"
+echo "${hostname}" > /mnt/etc/hostname
+echo "LANG=en_US.UTF-8" > /mnt/etc/locale.conf
+
+echo "%wheel ALL=(ALL) ALL" >> /mnt/etc/sudoers
+
+cat >>/mnt/etc/pacman.conf <<EOF
+[multilib]
+Include = /etc/pacman.d/mirrorlist
+EOF
+arch-chroot /mnt locale-gen
+#arch-chroot /mnt grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+#sed 's/loglevel=3\ quiet/loglevel=3\ quiet\ nowatchdog/' -i /mnt/etc/default/grub
+#arch-chroot /mnt grub-mkconfig -o /boot/grub/grub.cfg
+arch-chroot /mnt mkdir -p /boot/loader/entries
+arch-chroot /mnt bootctl --path=/boot install
+
+cat <<EOF > /mnt/boot/loader/loader.conf
+default arch
+EOF
+
+cat >>/mnt/boot/loader/entries/arch.conf <<EOF
+title   Arch Linux
+linux   /vmlinuz-linux
+initrd  /intel-ucode.img
+initrd  /initramfs-linux.img
+options root=PARTUUID=$(blkid -s PARTUUID -o value "$part_root") nowatchdog rw
+EOF
+
+arch-chroot /mnt useradd -mU -G wheel "$user"
+arch-chroot /mnt pacman -Sy --noconfirm dhcpcd dash
+
+nvidia=$(dialog --stdout --inputbox "install nvidia including 32bit support? [y/N]" 0 0) || exit 1
+clear
+shopt -s nocasematch
+if [[ $nvidia =~ y ]]
+then
+	arch-chroot /mnt pacman -Sy --noconfirm nvidia nvidia-settings nvidia-utils lib32-nvidia-utils vulkan-icd-loader lib32-vulkan-icd-loader
+else
+	echo "-- skipping"
+fi
+
+curl -sL https://git.io/Jedy7 > /mnt/etc/profile.d/firstrun.sh
+arch-chroot /mnt chown -R "$user:$user" /home/"$user"/
+arch-chroot /mnt systemctl enable dhcpcd
+arch-chroot /mnt ln -sfT dash /usr/bin/sh
+
+echo 'creating swapfile'
+arch-chroot /mnt dd if=/dev/zero of=/swapfile count=$swap_size bs=1MiB status=progress
+arch-chroot /mnt chmod 600 /swapfile
+arch-chroot /mnt mkswap /swapfile
+echo '/swapfile none swap sw 0 0' | tee -a /mnt/etc/fstab
+
+echo "$password
+$password
+" | arch-chroot /mnt passwd $user
+
+echo "$password
+$password" | arch-chroot /mnt passwd
+
+umount -R /mnt
+
+echo 'reboot when ready!'
