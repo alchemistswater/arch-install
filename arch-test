@@ -56,7 +56,7 @@ timedatectl set-ntp true
 parted --script "${device}" -- mklabel gpt \
   mkpart ESP fat32 1Mib 1024MiB \
   set 1 boot on \
-  mkpart primary 1024MiB 100%
+  mkpart primary 1024MiB 75%
   
 #parted --script "${device2}" -- mklabel gpt \
 #  mkpart primary 1Mib 3814MiB \
@@ -99,7 +99,7 @@ mount -o defaults,relatime "${part_boot}" /mnt/boot
 #mount -o defaults,relatime "${part_var}" /mnt/var
 #mount -o defaults,relatime "${part_tmp}" /mnt/tmp
 
-pacstrap /mnt base base-devel curl wget linux e2fsprogs f2fs-tools grub efibootmgr intel-ucode git openssh dash
+pacstrap /mnt base base-devel curl wget linux e2fsprogs f2fs-tools intel-ucode git openssh dash
 genfstab -U -p /mnt >> /mnt/etc/fstab
 
 sed 's/#en_US.UTF-8/en_US.UTF-8/' -i /mnt/etc/locale.gen
@@ -145,7 +145,6 @@ else
 	echo "-- skipping"
 fi
 
-curl -sL https://git.io/Jedy7 > /mnt/etc/profile.d/firstrun.sh
 arch-chroot /mnt chown -R "$user:$user" /home/"$user"/
 arch-chroot /mnt systemctl enable dhcpcd
 arch-chroot /mnt ln -sfT dash /usr/bin/sh
